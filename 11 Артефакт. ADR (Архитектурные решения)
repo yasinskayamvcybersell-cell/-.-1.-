@@ -1,0 +1,89 @@
+# Артефакт 13. Базовая архитектура
+
+## Спортивная социальная платформа
+
+**Автор:** Архитектор ПО  
+**Дата:** Июнь 2026  
+**Версия:** 1.0
+
+---
+
+## 1. Ограничения бизнес-требований
+
+| № | Ограничение | Влияние на архитектуру |
+|---|-------------|------------------------|
+| 1 | Пользователи по всему миру | Геораспределение (ЦОД в US/EU/APAC), поддержка локализации. |
+| 2 | Проведение соревнований с большим количеством участников | Масштабируемость: очереди (Kafka), асинхронная обработка. |
+| 3 | Подключение сторонних устройств | Абстрактный слой интеграций, поддержка BLE/ANT+/HealthKit/Google Fit. |
+| 4 | Интеграция с фитнес-функциями телефона | Использование Health Connect (Android), HealthKit (iOS). |
+| 5 | Особое внимание охране данных | Шифрование, аудит, соответствие GDPR/152-ФЗ. |
+
+---
+
+## 2. Учёт НФТ и атрибутов качества
+
+| Атрибут | Архитектурное решение |
+|---------|------------------------|
+| Масштабируемость | Горизонтальное масштабирование всех сервисов, шардирование БД по времени (TimescaleDB), кэширование (Redis), асинхронная обработка (Kafka). |
+| Надёжность | Геораспределение (2+ ЦОД), синхронная репликация БД, автоматическое восстановление K8s, саги для согласованности. |
+| Безопасность | JWT + OAuth2, TLS 1.3, шифрование ПДн в БД (AES-256), аудит доступа, Vault для секретов. |
+| Производительность | GraphQL для клиентов (сокращение запросов), gRPC для внутренних вызовов, кэширование, CDN для статики. |
+| Наблюдаемость | OpenTelemetry, ELK, Prometheus + Grafana, Jaeger. |
+
+---
+
+## 3. Архитектурная схема (C4 – уровень 3)
+
+**ВСТАВИТЬ ДИАГРАММУ (C4 Level 3 – Компоненты)**
+
+Ниже приведён Mermaid-код для генерации диаграммы компонентов. Скопируйте его в [mermaid.live](https://mermaid.live/) и скачайте PNG.
+
+```mermaid
+flowchart TB
+    subgraph Frontend[Клиентский слой]
+        Mobile[React Native Mobile]
+        Web[React Web]
+        IoT[BLE/MQTT Устройства]
+    end
+
+    subgraph Gateway[API Gateway]
+        PubGW[Public Gateway\nGraphQL/REST]
+        IoTGW[IoT Gateway\nMQTT/WebSocket]
+    end
+
+    subgraph Services[Сервисный слой]
+        User[User Service]
+        Social[Social Service]
+        Workout[Workout Service]
+        Plan[Planning Service]
+        Gear[Gear Service]
+        Game[Gamification Service]
+        Promo[Promotions Service]
+        Notif[Notifications Service]
+        Integr[Integrations Service]
+    end
+
+    subgraph Bus[Событийная шина]
+        Kafka[Apache Kafka]
+    end
+
+    subgraph Storage[Слой данных]
+        PG[(PostgreSQL)]
+        TS[(TimescaleDB)]
+        ES[(Elasticsearch)]
+        Redis[(Redis)]
+        S3[(Object Storage)]
+    end
+
+    Mobile --> PubGW
+    Web --> PubGW
+    IoT --> IoTGW
+    PubGW --> Services
+    IoTGW --> Integr
+
+    Services --> Kafka
+    Services --> PG
+    Workout --> TS
+    Social --> ES
+    Game --> Redis
+    Integr --> S3
